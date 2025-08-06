@@ -1,0 +1,515 @@
+# =========================================================
+# Examen practico 1
+# Fecha: 04/06/2024
+# Autor: Wisnel FRANCOIS
+# =========================================================
+
+
+
+# Paqueteria
+install.packages("tidyverse") 
+install.packages("ISLR2")
+install.packages("class")
+install.packages("gridExtra")
+
+library(tidyverse) # Carga el conjunto de paquetes tidyverse (dplyr, ggplot2, tidyr, etc.) para manipulación y visualización de datos.
+library(graphics) # Carga funciones gráficas base de R como plot(), hist(), barplot(), etc.
+library(readxl) # Permite leer archivos de Excel (.xls y .xlsx) directamente en R.
+library(knitr) # Facilita la creación de reportes en R Markdown combinando texto, código y resultados.
+library(class)   # Carga funciones de clasificación, como knn() para el algoritmo de K-vecinos más cercanos.
+library(MASS)
+library(ggeffects)
+library(caret)
+library(gridExtra)
+
+
+# Datos
+setwd("C:/Users/DELL/Desktop/FLACSO 2024-2026/Tercer cuatrimestre/Estadistica III/Taller Estadistica III/Examen 1 _Practico")
+df<- read_xlsx("resume.xlsx")
+df
+options(scipen=999) # quitar las notaciones scientificas
+
+names(df) # para ver las columnas
+table(df$received_callback)
+table(df$college_degree)
+table(df$race)
+table(df$military)
+table(df$gender)
+table(df$job_city)
+
+
+# vamos a etiquetar cada variable
+df <- df %>%
+  mutate(recibir_llamada=factor(received_callback, levels = c(0,1),
+                                labels = c("No", "Si"))) %>%
+  mutate(titulo=factor(college_degree, levels = c(0,1),
+                       labels = c("No", "Si"))) %>%
+  mutate(experiencia_militar=factor(military, levels = c(0,1),
+                                    labels = c("No", "Si"))) %>% 
+  mutate(premios=factor(honors, levels = c(0,1),
+                        labels = c("No", "Si"))) %>% 
+  mutate(correo=factor(has_email_address, levels = c(0,1),
+                             labels = c("No", "Si"))) %>% 
+  mutate(raza=factor(race, labels=c("Afroamericana", "Blanca"))) %>% 
+  mutate(sexo=factor(gender, labels=c("Mujer", "Hombre"))) %>% 
+  mutate(experiencia_laboral=years_experience) %>% 
+  mutate(trabajo_ciudad=factor(job_city, labels=c("Boston", "Chicago"))) %>% 
+  mutate(anos_universitaria = years_college)
+
+
+
+# Verificar las variables modificadas
+table(df$race)
+table(df$raza)
+
+
+table(df$gender)
+table(df$sexo)
+
+
+
+
+table(df$received_callback)
+table(df$recibir_llamada)
+
+
+
+table(df$job_city)
+table(df$trabajo_ciudad)
+
+
+table(df$years_experience)
+table(df$experiencia_laboral)
+
+
+table(df$years_college)
+table(df$anos_universitaria)
+
+
+table(df$military)
+table(df$experiencia_militar)
+
+
+table(df$has_email_address)
+table(df$correo)
+
+
+table(df$college_degree)
+table(df$titulo)
+
+
+table(df$honors)
+table(df$premios)
+
+
+# 1. Generamos una base de datos nueva (df1), donde solamente se incluyan las 10 variables del trabajo.
+
+df1 <- df %>%
+  dplyr:::select(c(recibir_llamada, trabajo_ciudad, experiencia_laboral, anos_universitaria,
+                   premios, experiencia_militar, correo, titulo, raza, sexo))
+summary(df1)
+
+# 2. Realizamos un analisis descriptivo de los datos. 
+
+
+# Histograma de experiencia laboral
+ggplot(df, aes(x = experiencia_laboral)) +
+  geom_histogram(bins = 10, fill = "gray", color = "black") +
+  labs(title = "Histograma de experiencia laboral",
+       x = "Años de experiencia",
+       y = "Numero de CVs") +
+  theme_minimal()
+
+table(df1$experiencia_laboral)
+
+# Media y desviación estándar de experiencia laboral
+df %>%
+  summarise(
+    media_experiencia = mean(experiencia_laboral, na.rm = TRUE),
+    sd_experiencia = sd(experiencia_laboral, na.rm = TRUE)
+  )
+
+
+# Histograma de años de universidad
+ggplot(df, aes(x = anos_universitaria)) +
+  geom_histogram(binwidth = 1, fill = "gray", color = "white") +
+  labs(title = "Años de educación universitaria", x = "Años de educación universitaria", y = "Numero de CVs") +
+  theme_minimal()
+
+
+table(df1$anos_universitaria)
+
+# Media y desviación estándar de años universitarios
+df %>%
+  summarise(
+    media_educacion = mean(anos_universitaria, na.rm = TRUE),
+    sd_educacion = sd(anos_universitaria, na.rm = TRUE)
+  )
+
+
+
+
+
+# Con porcentajes
+
+# Primero construimos una funcion
+
+# Función para gráficos de barras con porcentajes
+grafico_barras <- function(var, titulo, color = "#56B4E9") {
+  df %>%
+    count({{ var }}) %>%
+    mutate(porcentaje = round(n / sum(n) * 100, 1)) %>%
+    ggplot(aes(x = {{ var }}, y = porcentaje, fill = {{ var }})) +
+    geom_col(color = "black", show.legend = FALSE) +
+    geom_text(aes(label = paste0(porcentaje, "%")), vjust = -0.5) +
+    labs(title = titulo, y = "Porcentaje", x = "") +
+    scale_fill_manual(values = rep(color, 10)) +
+    theme_minimal()
+}
+
+
+
+# Llamadas
+g1<-grafico_barras(recibir_llamada, "¿Recibió llamada de entrevista?", "#009E73")
+
+# Título universitario
+g2<-grafico_barras(titulo, "¿Tiene título universitario?")
+
+# Experiencia militar
+g3<-grafico_barras(experiencia_militar, "¿Tiene experiencia militar?")
+
+# Premios u honores
+g4<-grafico_barras(premios, "¿Menciona premios?")
+
+# Correo electrónico incluido
+g5<-grafico_barras(correo, "¿Incluye correo electrónico?")
+
+# Raza
+g6<-grafico_barras(raza, "Raza", "#CC79A7")
+
+# Sexo
+g7<-grafico_barras(sexo, "Sexo", "#F0E442")
+
+# Ciudad del trabajo
+g8<-grafico_barras(trabajo_ciudad, "Ciudad donde se ofrece el empleo", "#0072B2")
+
+
+grid.arrange(g1, g2, g3, g4, g5, g6, g7, g8, nrow = 2, ncol = 4)
+
+#3. Ajusta un modelo de regresion logıstica donde Y nos dice si el candidato recibio 
+#o no llamada a entrevista. Comienza con un modelo que incluya todas las variables independientes 
+# y descarta aquellas cuyo p-valor sea mayor a 0.05. 
+#Repite el proceso con las variables que quedan hasta que todas sean significativas con un nivel de α =0,05.
+
+#variable dependientes: recibir_llamada 
+#variables independientes :
+                            #trabajo_ciudad
+                            #experiencia_laboral
+                            #anos_universitaria
+                            #premios
+                            #experiencia_militar
+                            #correo
+                            #titulo
+                            #raza
+                            #sexo
+
+# Ajustamos un modelo de regresion logistica con todas las variables independientes
+modelo <- glm(recibir_llamada~trabajo_ciudad+experiencia_laboral+anos_universitaria
+              + premios+ experiencia_militar+ correo+titulo+ raza+
+                sexo,data=df1, family= "binomial")
+summary(modelo)
+
+#Modelo con las variables significativas #quitar anos universitaria, experiancia_militar, titulo y sexo
+
+
+modelo1 <- glm(recibir_llamada~trabajo_ciudad+experiencia_laboral+ premios+ correo + raza,data=df1, family= "binomial")
+summary(modelo1)
+
+#quitar correo
+
+modelo2 <- glm(recibir_llamada~trabajo_ciudad+experiencia_laboral+ premios+ raza,data=df1, family= "binomial")
+
+summary(modelo2)
+
+# 4. Con las variables que resultaron significativas en el punto 3, estima un modelo que
+#revise la significancia de sus interacciones. ¿Vale la pena incluir las interacciones en
+#el modelo? Decide con cual modelo quedarte y menciona por que.
+
+modelo3 <- glm(recibir_llamada ~ (trabajo_ciudad + experiencia_laboral + premios + raza)^2, 
+               data = df1, 
+               family = "binomial")
+
+summary(modelo3)
+  
+
+# Yo quedo con el modelo 2. Porque en el modelo 3, las interacciones no son significativas y tambien AIC mas grandes que el modelo sin interacciones (modelo 2)
+
+
+#  5. Estimamos un modelo complejo que incluya TODAS las variables de la base de datos
+# y todas sus posibles interacciones. Realiza una seleccion automatica de variables
+# mediante el criterio de informacion de Akaike (AIC) y la direccion ”backward”.
+# ¿Que modelo es mejor: el que resulta de la seleccion automatica o el que escogiste en el punto 4?
+
+
+#El modelo complejo y sus posibles interacciones
+modelo_complejo_inter <-glm(recibir_llamada ~ (trabajo_ciudad + experiencia_laboral + anos_universitaria + premios + experiencia_militar + correo+titulo+ raza+
+                                    sexo)^2, data = df1, family = "binomial")
+
+summary(modelo_complejo_inter)
+
+
+modelo_AIC <- stepAIC(
+  object = modelo_complejo_inter, # Modelo inicial con todas las variables y sus interacciones
+  direction = "backward",   # Dirección: backward (elimina variables una a una)
+  k = 2,                    # Penalización de AIC (el valor estándar)
+  trace = TRUE              # Muestra el progreso paso a paso
+)
+
+summary(modelo_AIC)
+
+
+# En el modelo (modelo_AIC), las siguientes variables son significativas: Trabajo_ciudad, experiencia_laboral y experiencia_militar. 
+#Las variables no son significativas: anos_universitaria, premiosSi, correosi, titulosi,, razablanca y sexohomre
+# en cuento a las interaciones que son significativas: trabajo_ciudad y titulo, trabajo_ciudad y sexo, 
+                                #experiencia_laboral y experiencia_militar, premios y correo
+                                #experiencia_militar y sexo, titulo y raza, titulo y sexo
+#Las interacciones que no son: experiencia_laboral:premiosSi, anos_universitaria:correoSi, anos_universitaria:premiosSi, 
+                               #anos_universitaria:razaBlanca, premiosSi:tituloSi 
+# Y el valor del AIC en este modelo es 2644.9
+
+#Para el modelo en el punto 4, el mejor modelo es el modelo 2: todas las variables son significativas 
+#Y el valor del AIC 2677.6
+
+
+#El modelo 2 es más parsimonioso, incluye solo efectos principales, y todas las variables que lo componen son significativas. 
+#se optó por conservar el modelo 2 y con todos los predictores significativos.
+
+
+
+#6. Utiliza el modelo elegido en el punto anterior para predecir la probabilidad de ser
+#llamado a entrevista de una persona blanca, en Chicago, sin anos de experiencia y
+#sin premios reportados. Calcula lo mismo pero para un afroamericano. Calcula la
+#probabilidad de ser llamado a entrevista de una persona blanca, en Boston, con diez
+#anos de experiencia y que reporta premios y honores. Calcula lo mismo pero para un afroamericano
+
+
+# a) Cual es la probabilidad de ser llamado a entrevista de una persona blanca,
+# en Chicago, sin anos de experiencia y sin premios reportados?
+
+pred1 <- ggpredict(modelo2,
+                   terms = c("raza[Blanca]", 
+                             "trabajo_ciudad[Chicago]", 
+                             "experiencia_laboral[0]", 
+                             "premios[No]"))
+pred1
+
+
+# b)Cual es la probabilidad de ser llamado a entrevista de una persona Afroamericana, Chicago, sin experiencia, sin premios
+
+pred2 <- ggpredict(modelo2,
+                   terms = c("raza[Afroamericana]", 
+                             "trabajo_ciudad[Chicago]", 
+                             "experiencia_laboral[0]", 
+                             "premios[No]"))
+
+pred2
+
+
+# b) Cual es la probabilidad de ser llamado a entrevista de una persona Blanca, Boston, 10 años, con premios y honores
+
+pred3 <- ggpredict(modelo2,
+                   terms = c("raza[Blanca]", 
+                             "trabajo_ciudad[Boston]", 
+                             "experiencia_laboral[10]", 
+                             "premios[Si]"))
+pred3
+
+
+# b) Cual es la probabilidad de ser llamado a entrevista de una persona Afroamericana, Boston, 10 años, con premios y honores
+
+pred4 <- ggpredict(modelo2,
+                   terms = c("raza[Afroamericana]", 
+                             "trabajo_ciudad[Boston]", 
+                             "experiencia_laboral[10]", 
+                             "premios[Si]"))
+pred4
+
+
+
+#7. De los CVs de la base de datos, ¿cuales son las caracterısticas del que arroja la
+#mayor probabilidad de ser llamado a entrevista? ¿Cuales son las caracterısticas del
+#de menor probabilidad?
+
+
+#Primero agregamos una columna con la probabilidad predicha en la base df1
+
+df1$prob_llamada <- predict(modelo2, type = "response")
+
+# CV con mayor probabilidad
+mayor_prob <- df1[which.max(df1$prob_llamada), ]
+
+# CV con menor probabilidad
+menor_prob <- df1[which.min(df1$prob_llamada), ]
+
+
+# Mostrar las características del mejor y peor 
+
+mayor_prob
+menor_prob
+
+
+# Índices de los extremos
+indice_max <- which.max(df1$prob_llamada)
+indice_min <- which.min(df1$prob_llamada)
+
+# Ver la probabilidad máxima y mínima
+prob_max <- df1$prob_llamada[indice_max]
+prob_min <- df1$prob_llamada[indice_min]
+
+prob_max
+prob_min
+
+# CV con mayor probabilidad de ser llamado tiene las siguientes características: 
+#es de raza blanca, reside en Boston, reporta premios, tiene 26 años de experiencia laboral, tiene 3 anos universitarias
+#No tiene experiencia militar, no tiene título, de sexo mujer
+#y tiene correo electrónico
+#Su probabilidad estimada de recibir una llamada es de 29.89%.
+
+#con menor probabilidad de ser llamado corresponde 
+# a una persona afroamericana, en Chicago, con 1 experiencia laboral, con 3 anos universitarias
+#sin premios, sin título, tiene correo, tiene experiencia militar y de sexo mujer.
+
+#Su probabilidad de ser llamado es de solo 4.32%.
+
+
+
+# 8. Divide tus datos en un conjunto de entrenamiento y prueba y usa la regresion
+#logıstica como clasificador. Digamos que un candidato tiene una probabilidad alta
+#de ser llamado a entrevista si esta probabilidad es mayor o igual a 0.5. Calcula la
+#matriz de confusion y las metricas. ¿Que observas? ¿Es un buen clasificador?
+
+# Dividimos los datos -----------------------------------------------------
+
+# Clasificacion con vecino k= 1
+
+
+# Dividimos nuestro conjunto de datos en un subconjunto de entrenamiento (80%)
+# y un subconjunto de prueba (20%).
+set.seed(123)
+
+
+# Usamos la función scale() para reescalar las variables numéricas,
+# de modo que todas tengan media=0 y sd=1. Esto hay que hacerlo siempre antes
+# de ajustar un clasificador KNN. 
+df1 <- df1 %>%
+  na.omit() %>%
+  mutate(
+    experiencia_laboral = scale(experiencia_laboral),
+    raza = factor(raza),
+    premios = factor(premios),
+    trabajo_ciudad = factor(trabajo_ciudad),
+    recibir_llamada = factor(recibir_llamada)
+  ) %>%
+  dplyr::select(experiencia_laboral, raza, premios, trabajo_ciudad,recibir_llamada)
+
+df1
+
+#Creamos un vector con los índices de los datos de entrenamiento:
+indice <- createDataPartition(y=(df1$recibir_llamada), p = 0.8, list = FALSE)  # 80% entrenamiento
+
+indice
+
+
+#Dividimos los datos
+train <- df1[indice, ]
+test <- df1[-indice, ]
+train
+
+#Verificamos la distribución de ceros y unos
+
+# Proporción de ceros y unos en datos originales
+table(df1$recibir_llamada) / nrow(df1)  
+
+# Proporción de ceros y unos en datos de entrenamiento
+table(train$recibir_llamada) / nrow(train)  
+
+# Proporción de ceros y unos datos de prueba
+table(test$recibir_llamada) / nrow(test)
+
+# Convertir factores a numéricos
+train$raza <- as.numeric(factor(train$raza))
+train$premios <- as.numeric(factor(train$premios))
+train$trabajo_ciudad <- as.numeric(factor(train$trabajo_ciudad))
+
+test$raza <- as.numeric(factor(test$raza))
+test$premios <- as.numeric(factor(test$premios))
+test$trabajo_ciudad <- as.numeric(factor(test$trabajo_ciudad))
+
+
+sum(is.na(train))  # Debe dar 0
+sum(is.na(test))
+
+
+# KNN ####
+
+# Ajustamos un clasificador KNN con k=1 vecino.
+k <- 1
+set.seed(123)
+knn.pred <- class::knn(train[,c(1,2,3,4)],test[,c(1,2,3,4)],
+                       as.factor(train$recibir_llamada),k=k)
+
+
+knn.pred
+# Creamos la matriz de confusión del clasificador (usando
+# las predicciones del mismo en los datos de prueba). Calculamos
+# la precisión.
+mc <- table(knn.pred, as.factor(test$recibir_llamada))
+mc
+sum(diag(mc))/sum(mc)
+
+#Error
+error <- 1 - sum(diag(mc))/sum(mc) 
+error
+
+
+# Crear la matriz de confusión con métricas completas
+matriz_caret <- confusionMatrix(as.factor(knn.pred), # Predicciones
+                                as.factor(test$recibir_llamada), # Valores reales
+                                positive = "Si") # Evento de interés
+
+matriz_caret
+
+# Con un clasificador KNN con k=1, predijo correctamente la posibilidad de que
+# un CV reciba o no una llamada por entrevista en 91.88% del tiempo.
+# En el modelo, hay un error de entrenamiento de 8.12%
+
+
+# Ahora hacemos una regresión logística para predecir
+# la probabilidad de sobrevivir.
+modelo2.log <- glm(recibir_llamada~trabajo_ciudad+experiencia_laboral+ premios+ raza, data=train, family="binomial")
+summary(modelo2.log)
+
+
+umbral <- 0.50
+p <- predict(modelo2.log, test, type="response")
+p
+p <- ifelse(p>=umbral,1,0)
+mc <- table(p,test$recibir_llamada)
+mc
+precision <- sum(diag(mc))/sum(mc)
+precision
+
+
+error2<-1-precision
+error2
+
+ROC.logistico <- pROC::roc(test$recibir_llamada,
+                           predict(modelo2.log, test, type="response"))
+as.numeric(ROC.logistico$auc)
+
+plot(ROC.logistico,print.auc=FALSE,
+     main="Curva ROC para KNN y logístico",col="darkcyan")
+lines(ROC.logistico,col="purple")
+legend("bottomright", legend=c("KNN", "regresión logística"),
+       lty=c(1,1),col=c("darkcyan","purple"))
+
